@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- crwebapp_v1_webappcr.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,27 @@
+# permissions for end users to view webappcrs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: webappcr-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: webappcr
+    app.kubernetes.io/part-of: webappcr
+    app.kubernetes.io/managed-by: kustomize
+  name: webappcr-viewer-role
+rules:
+- apiGroups:
+  - crwebapp.my.domain
+  resources:
+  - webappcrs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - crwebapp.my.domain
+  resources:
+  - webappcrs/status
+  verbs:
+  - get

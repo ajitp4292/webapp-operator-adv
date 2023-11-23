@@ -57,10 +57,11 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	echoMsg := "echo " + webappCR.Spec.URI
+
 	// Define the desired state of the CronJob based on the WebappCR instance
 	cronJob := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      webappCR.Name + "-cronjob",
+			Name:      webappCR.Name,
 			Namespace: webappCR.Namespace,
 		},
 		Spec: batchv1.CronJobSpec{
@@ -69,7 +70,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
-					BackoffLimit: pointer.Int32Ptr(3),
+					BackoffLimit: pointer.Int32Ptr(webappCR.Spec.BackoffLimit),
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -87,9 +88,22 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		},
 	}
 
+	labels := cronJob.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels["owner-cronjob"] = webappCR.Name
+	cronJob.SetLabels(labels)
+
 	// Set WebappCR instance as the owner and controller
 	if err := ctrl.SetControllerReference(webappCR, cronJob, r.Scheme); err != nil {
 
+		return ctrl.Result{}, err
+	}
+
+	// Check if there are any remaining child resources
+	if err := r.areChildResourcesDeleted(ctx, cronJob); err != nil {
+		// log.Error(err, "error checking child resources")
 		return ctrl.Result{}, err
 	}
 
@@ -104,11 +118,38 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	} else if err == nil {
 		// Update the CronJob if it already exists and an update is needed
 		// Note: You'll need to determine the logic for when an update is necessary
+		cronJob.Spec.JobTemplate.Spec.BackoffLimit = pointer.Int32Ptr(webappCR.Spec.BackoffLimit)
+		// // Update the CronJob
+		if err := r.Update(ctx, cronJob); err != nil {
+			// log.Error(err, "unable to update CronJob spec")
+			return ctrl.Result{}, err
+		}
 	}
 
-	//
-
 	return ctrl.Result{}, nil
+}
+
+func (r *WebappCRReconciler) areChildResourcesDeleted(ctx context.Context, cronJob *batchv1.CronJob) error {
+	// Check for the presence of child resources
+	// You may need to customize this based on the types of child resources associated with your CR
+	webappCR := &crwebappv1.WebappCR{}
+	// Example: Check for remaining CronJobs
+	cronJobList := &batchv1.CronJobList{}
+	if err := r.List(ctx, cronJobList, client.InNamespace(cronJob.Namespace), client.MatchingLabels{"owner-cronjob": cronJob.Name}); err != nil {
+		return err
+	}
+
+	if len(cronJobList.Items) > 0 {
+		// Some CronJobs are still present, do not delete the CR yet
+		return nil
+	}
+
+	// If there are no remaining child resources, delete the CR
+	if err := r.Delete(ctx, webappCR); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

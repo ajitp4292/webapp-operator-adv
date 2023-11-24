@@ -38,6 +38,8 @@ type WebappCRSpec struct {
 type WebappCRStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	LastExecutionTime metav1.Time `json:"lastExecutionTime"`
+	ExecutionStatus   string      `json:"executionStatus"`
 }
 
 //+kubebuilder:object:root=true

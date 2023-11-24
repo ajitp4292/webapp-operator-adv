@@ -18,11 +18,6 @@ package controller
 
 import (
 	"context"
-	"strconv"
-	"time"
-
-	kbatch "k8s.io/api/batch/v1"
-
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,9 +26,7 @@ import (
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	// "sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	// "sigs.k8s.io/controller-runtime/pkg/source"
 
 	crwebappv1 "webappcr.io/api/v1"
 )
@@ -47,7 +40,6 @@ type WebappCRReconciler struct {
 //+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs/finalizers,verbs=update
-//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=cronjobs,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -59,7 +51,7 @@ type WebappCRReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
 func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	_ = log.FromContext(ctx)
 	webappCR := &crwebappv1.WebappCR{}
 	if err := r.Get(ctx, req.NamespacedName, webappCR); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -80,21 +72,12 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				Spec: batchv1.JobSpec{
 					BackoffLimit: pointer.Int32Ptr(webappCR.Spec.BackoffLimit),
 					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"owner-cronjob": webappCR.Name,
-							},
-						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
 								{
-									Name:  "ubuntu",
-									Image: "ubuntu", // Replace with your container image
-									Command: []string{
-										"/bin/bash",
-										"-c",
-										"sleep 500000 && " + echoMsg, // Sleep for 60 seconds before running the main command
-									},
+									Name:    "ubuntu",
+									Image:   "ubuntu", // Replace with your container image
+									Command: []string{"/bin/bash", "-c", echoMsg},
 								},
 							},
 							RestartPolicy: corev1.RestartPolicyOnFailure,
@@ -102,9 +85,6 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 					},
 				},
 			},
-		},
-		Status: batchv1.CronJobStatus{
-			LastScheduleTime: &metav1.Time{Time: time.Now()},
 		},
 	}
 
@@ -117,7 +97,6 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// Set WebappCR instance as the owner and controller
 	if err := ctrl.SetControllerReference(webappCR, cronJob, r.Scheme); err != nil {
-
 		return ctrl.Result{}, err
 	}
 
@@ -129,107 +108,52 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// Check if this CronJob already exists
 	found := &batchv1.CronJob{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: cronJob.Name, Namespace: cronJob.Namespace}, found)
+	err := r.Get(ctx, types.NamespacedName{Name: cronJob.Name, Namespace: cronJob.Namespace}, found)
 	if err != nil {
 		// If the CronJob does not exist, create it
-		if err = r.Client.Create(ctx, cronJob); err != nil {
+		if err = r.Create(ctx, cronJob); err != nil {
 			return ctrl.Result{}, err
 		}
 	} else if err == nil {
 		// Update the CronJob if it already exists and an update is needed
 		// Note: You'll need to determine the logic for when an update is necessary
 		cronJob.Spec.JobTemplate.Spec.BackoffLimit = pointer.Int32Ptr(webappCR.Spec.BackoffLimit)
-		// Status Update
-		if err := r.Client.Status().Update(ctx, cronJob); err != nil {
+		// // Update the CronJob
+		if err := r.Update(ctx, cronJob); err != nil {
 			// log.Error(err, "unable to update CronJob spec")
 			return ctrl.Result{}, err
 		}
-
-	}
-
-	cronJobStatus := &batchv1.CronJob{}
-	if err := r.Get(ctx, client.ObjectKeyFromObject(cronJob), cronJobStatus); err != nil {
-		log.Error(err, "unable to get CronJob status")
-		return ctrl.Result{}, err
-	}
-
-	// Check if the status field is not nil before accessing LastScheduleTime
-	if cronJobStatus.Status.LastScheduleTime != nil {
-		webappCR.Status.LastExecutionTime = metav1.Time{Time: cronJobStatus.Status.LastScheduleTime.Time}
-	} else {
-		log.Info("CronJob status is nil")
-		// Handle the case where the status is nil, log an error, or take appropriate action
-	}
-
-	// execute status
-
-	var childJobs kbatch.JobList
-	var activeJobs []*kbatch.Job
-
-	if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace), client.MatchingLabels(labels)); err != nil {
-		log.Error(err, "unable to list child Jobs")
-		return ctrl.Result{}, err
-	}
-	log.Info(strconv.Itoa(len(childJobs.Items)))
-	// log.Info(labels["owner-cronjob"])
-
-	isJobFinished := func(job *kbatch.Job) (bool, kbatch.JobConditionType) {
-		for _, c := range job.Status.Conditions {
-
-			if (c.Type == kbatch.JobComplete || c.Type == kbatch.JobFailed) && c.Status == corev1.ConditionTrue {
-				return true, c.Type
-			}
-		}
-
-		return false, ""
-	}
-
-	for i, job := range childJobs.Items {
-		finished, _ := isJobFinished(&job)
-		// log.Info(job.Name)
-		if !finished {
-			activeJobs = append(activeJobs, &childJobs.Items[i])
-		}
-	}
-
-	if len(activeJobs) > 0 {
-		webappCR.Status.ExecutionStatus = "Active"
-		r.Status().Update(ctx, webappCR)
-	} else {
-		webappCR.Status.ExecutionStatus = "Inactive"
-		r.Status().Update(ctx, webappCR)
-
-	}
-
-	if err := r.Status().Update(ctx, webappCR); err != nil {
-		log.Error(err, "unable to update WebappCR status")
-		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *WebappCRReconciler) reconcileJobs(ctx context.Context, webappCR *crwebappv1.WebappCR) error {
-	// Your logic to reconcile jobs based on the WebappCR
-	// ...
-	// webappCR := &crwebappv1.WebappCR{}
-	log := log.FromContext(ctx)
-	log.Info("here")
+// func (r *WebappCRReconciler) areChildResourcesDeleted(ctx context.Context, cronJob *batchv1.CronJob) error {
+// 	// Check for the presence of child resources
+// 	// You may need to customize this based on the types of child resources associated with your CR
+// 	webappCR := &crwebappv1.WebappCR{}
+// 	// Example: Check for remaining CronJobs
+// 	cronJobList := &batchv1.CronJobList{}
+// 	if err := r.List(ctx, cronJobList, client.InNamespace(cronJob.Namespace), client.MatchingLabels{"owner-cronjob": cronJob.Name}); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	if len(cronJobList.Items) > 0 {
+// 		// Some CronJobs are still present, do not delete the CR yet
+// 		return nil
+// 	}
+
+// 	// If there are no remaining child resources, delete the CR
+// 	if err := r.Delete(ctx, webappCR); err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *WebappCRReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&crwebappv1.WebappCR{}).
-		Owns(&batchv1.CronJob{}).
-		// Watches(
-		// 	&source.Kind{Type: &batchv1.CronJob{}},
-		// 	&handler.EnqueueRequestForOwner{
-		// 		IsController: true,
-		// 		OwnerType:    &crwebappv1.WebappCR{},
-		// 	},
-		// ).
 		Complete(r)
 }

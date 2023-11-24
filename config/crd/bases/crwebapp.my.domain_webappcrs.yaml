@@ -47,6 +47,18 @@ spec:
             type: object
           status:
             description: WebappCRStatus defines the observed state of WebappCR
+            properties:
+              executionStatus:
+                type: string
+              lastExecutionTime:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                format: date-time
+                type: string
+            required:
+            - executionStatus
+            - lastExecutionTime
             type: object
         type: object
     served: true

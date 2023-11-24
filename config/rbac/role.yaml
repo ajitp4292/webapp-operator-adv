@@ -7,6 +7,12 @@ rules:
 - apiGroups:
   - crwebapp.my.domain
   resources:
+  - cronjobs
+  verbs:
+  - update
+- apiGroups:
+  - crwebapp.my.domain
+  resources:
   - webappcrs
   verbs:
   - create

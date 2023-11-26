@@ -21,9 +21,8 @@ import (
 	"strconv"
 	"time"
 
-	kbatch "k8s.io/api/batch/v1"
-
 	batchv1 "k8s.io/api/batch/v1"
+	kbatch "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,9 +30,11 @@ import (
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	// "sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	// "sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	crwebappv1 "webappcr.io/api/v1"
 )
@@ -44,10 +45,12 @@ type WebappCRReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs/finalizers,verbs=update
-//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=cronjobs,verbs=update
+//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs,verbs=get;list;watch;create;update;patch;delete;
+//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs/status,verbs=get;list;watch;create;update;patch;delete;
+//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs/finalizers,verbs=get;list;watch;create;update;patch;delete;
+//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete;
+//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=cronjobs/status,verbs=get;list;watch;create;update;patch;delete;
+//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=configmaps,verbs=get;list;watch;create;update;patch;delete;
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -64,7 +67,26 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.Get(ctx, req.NamespacedName, webappCR); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	echoMsg := "echo " + webappCR.Spec.URI
+	// echoMsg := "echo " + webappCR.Spec.URI
+
+	// log.Info("Reconcile")
+
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      webappCR.Name,
+			Namespace: webappCR.Namespace,
+		},
+		Data: map[string]string{
+			"NumRetries": strconv.Itoa(int(webappCR.Spec.NumRetries)),
+			"URI":        webappCR.Spec.URI,
+		},
+	}
+
+	numRetries, error1 := strconv.ParseInt(configMap.Data["NumRetries"], 10, 32)
+	if error1 != nil {
+		log.Error(error1, "Error:")
+		// return
+	}
 
 	// Define the desired state of the CronJob based on the WebappCR instance
 	cronJob := &batchv1.CronJob{
@@ -78,7 +100,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
-					BackoffLimit: pointer.Int32Ptr(webappCR.Spec.BackoffLimit),
+					BackoffLimit: pointer.Int32Ptr(int32(numRetries)),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -93,7 +115,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 									Command: []string{
 										"/bin/bash",
 										"-c",
-										"sleep 500000 && " + echoMsg, // Sleep for 60 seconds before running the main command
+										"sleep 500000 && " + "echo " + configMap.Data["URI"], // Sleep for 60 seconds before running the main command
 									},
 								},
 							},
@@ -108,18 +130,183 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		},
 	}
 
+	// Set WebappCR instance as the owner and controller
+	if err := ctrl.SetControllerReference(webappCR, cronJob, r.Scheme); err != nil {
+
+		return ctrl.Result{}, err
+	}
+
+	foundCronJob := &batchv1.CronJob{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: cronJob.Name, Namespace: cronJob.Namespace}, foundCronJob)
+	if err != nil {
+
+		if err = r.Create(ctx, cronJob); err != nil {
+			return ctrl.Result{}, err
+		}
+	} else if err == nil {
+		// Update the CronJob if it already exists and an update is needed
+		// Note: You'll need to determine the logic for when an update is necessary
+		cronJob.Spec.JobTemplate.Spec.BackoffLimit = pointer.Int32Ptr(webappCR.Spec.NumRetries)
+
+		// Status Update
+		if err := r.Update(ctx, cronJob); err != nil {
+			// log.Error(err, "unable to update CronJob spec")
+			return ctrl.Result{}, err
+		}
+
+	}
+
+	if err := ctrl.SetControllerReference(webappCR, configMap, r.Scheme); err != nil {
+
+		return ctrl.Result{}, err
+	}
+
+	foundConfigMap := &corev1.ConfigMap{}
+	err2 := r.Client.Get(ctx, types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, foundConfigMap)
+	if err2 != nil {
+		if err2 = r.Create(ctx, configMap); err2 != nil {
+			return ctrl.Result{}, err2
+		}
+
+	} else if err2 == nil {
+		// Update the CronJob if it already exists and an update is needed
+		// Note: You'll need to determine the logic for when an update is necessary
+		configMap.Data["NumRetries"] = strconv.Itoa(int(webappCR.Spec.NumRetries))
+		configMap.Data["URI"] = webappCR.Spec.URI
+		// Status Update
+		if err2 := r.Update(ctx, configMap); err2 != nil {
+			return ctrl.Result{}, err2
+		}
+
+	}
+
+	finalizerName := "core.webappcr.io/finalizer"
+	// CronJobfinalizerName := "batch.webappcr.io/finalizer"
+
+	if webappCR.ObjectMeta.DeletionTimestamp.IsZero() {
+		// log.Info("webappCR DeletionTimestamp IsZero")
+		// CR is not being deleted
+		if !containsString(webappCR.ObjectMeta.Finalizers, finalizerName) {
+			// Add finalizer to CR
+			webappCR.ObjectMeta.Finalizers = append(webappCR.ObjectMeta.Finalizers, finalizerName)
+			if err := r.Update(ctx, webappCR); err != nil {
+				return ctrl.Result{}, err
+			}
+
+		}
+		// if !containsString(webappCR.ObjectMeta.Finalizers, finalizerName) {
+		// 	// Add finalizer to CR
+		// 	webappCR.ObjectMeta.Finalizers = append(webappCR.ObjectMeta.Finalizers, finalizerName)
+		// 	if err := r.Update(ctx, webappCR); err != nil {
+		// 		return ctrl.Result{}, err
+		// 	}
+
+		// }
+	} else {
+		log.Info("webappCR DeletionTimestamp else")
+		// CR is being deleted
+		if containsString(webappCR.ObjectMeta.Finalizers, finalizerName) {
+			// Run your cleanup logic, e.g., delete associated CronJob
+			if err := r.Get(ctx, req.NamespacedName, cronJob); err == nil {
+				// return ctrl.Result{}, client.IgnoreNotFound(err)
+				cronJob.ObjectMeta.Finalizers = removeString(cronJob.ObjectMeta.Finalizers, finalizerName)
+				if err := r.Update(ctx, cronJob); err != nil {
+					return ctrl.Result{}, err
+				}
+				if err := r.deleteCronJob(ctx, cronJob); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		}
+		if containsString(webappCR.ObjectMeta.Finalizers, finalizerName) {
+			// Run your cleanup logic, e.g., delete associated CronJob
+			if err := r.Get(ctx, req.NamespacedName, configMap); err == nil {
+				// return ctrl.Result{}, client.IgnoreNotFound(err)
+				configMap.ObjectMeta.Finalizers = removeString(configMap.ObjectMeta.Finalizers, finalizerName)
+				if err := r.Update(ctx, configMap); err != nil {
+					return ctrl.Result{}, err
+				}
+				if err := r.deleteConfigMap(ctx, configMap); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		}
+
+		// Remove finalizer from CR
+		webappCR.ObjectMeta.Finalizers = removeString(webappCR.ObjectMeta.Finalizers, finalizerName)
+		if err := r.Update(ctx, webappCR); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+		// The CR will be garbage collected by Kubernetes
+	}
+
+	if err := r.Get(ctx, req.NamespacedName, cronJob); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Adding the finalizer in CronJob
+	if cronJob.ObjectMeta.DeletionTimestamp.IsZero() {
+		// log.Info("cronjob DeletionTimestamp IsZero")
+		if !controllerutil.ContainsFinalizer(cronJob, finalizerName) {
+			controllerutil.AddFinalizer(cronJob, finalizerName)
+			if err := r.Update(ctx, cronJob); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+
+		}
+	}
+	// else {
+	// 	log.Info("cronjob DeletionTimestamp else")
+	// 	if controllerutil.ContainsFinalizer(cronJob, finalizerName) {
+	// 		log.Info("cronjob Contains Finalizer")
+	// 		controllerutil.RemoveFinalizer(cronJob, finalizerName)
+	// 		if err := r.Update(ctx, cronJob); err != nil {
+	// 			return ctrl.Result{}, err
+	// 		}
+	// 		return ctrl.Result{}, err
+
+	// 	}
+	// }
+
+	if err := r.Get(ctx, req.NamespacedName, configMap); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Adding the finalizer in ConfigMap
+	if configMap.ObjectMeta.DeletionTimestamp.IsZero() {
+		log.Info("configMap DeletionTimestamp IsZero")
+		if !controllerutil.ContainsFinalizer(configMap, finalizerName) {
+			controllerutil.AddFinalizer(configMap, finalizerName)
+			if err := r.Update(ctx, cronJob); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+
+		}
+	}
+	// else {
+	// 	if controllerutil.ContainsFinalizer(configMap, finalizerName) {
+	// 		log.Info("cronjob DeletionTimestamp else")
+	// 		controllerutil.RemoveFinalizer(configMap, finalizerName)
+	// 		if err := r.Update(ctx, configMap); err != nil {
+	// 			return ctrl.Result{}, err
+	// 		}
+	// 		return ctrl.Result{}, err
+
+	// 	}
+	// }
+
+	//execute status
+
 	labels := cronJob.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)
 	}
 	labels["owner-cronjob"] = webappCR.Name
 	cronJob.SetLabels(labels)
-
-	// Set WebappCR instance as the owner and controller
-	if err := ctrl.SetControllerReference(webappCR, cronJob, r.Scheme); err != nil {
-
-		return ctrl.Result{}, err
-	}
 
 	// Check if there are any remaining child resources
 	// if err := r.areChildResourcesDeleted(ctx, cronJob); err != nil {
@@ -128,31 +315,12 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// }
 
 	// Check if this CronJob already exists
-	found := &batchv1.CronJob{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: cronJob.Name, Namespace: cronJob.Namespace}, found)
-	if err != nil {
-		// If the CronJob does not exist, create it
-		if err = r.Client.Create(ctx, cronJob); err != nil {
-			return ctrl.Result{}, err
-		}
-	} else if err == nil {
-		// Update the CronJob if it already exists and an update is needed
-		// Note: You'll need to determine the logic for when an update is necessary
-		cronJob.Spec.JobTemplate.Spec.BackoffLimit = pointer.Int32Ptr(webappCR.Spec.BackoffLimit)
-		// Status Update
-		if err := r.Client.Status().Update(ctx, cronJob); err != nil {
-			// log.Error(err, "unable to update CronJob spec")
-			return ctrl.Result{}, err
-		}
-
-	}
 
 	cronJobStatus := &batchv1.CronJob{}
 	if err := r.Get(ctx, client.ObjectKeyFromObject(cronJob), cronJobStatus); err != nil {
 		log.Error(err, "unable to get CronJob status")
 		return ctrl.Result{}, err
 	}
-
 	// Check if the status field is not nil before accessing LastScheduleTime
 	if cronJobStatus.Status.LastScheduleTime != nil {
 		webappCR.Status.LastExecutionTime = metav1.Time{Time: cronJobStatus.Status.LastScheduleTime.Time}
@@ -170,8 +338,6 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		log.Error(err, "unable to list child Jobs")
 		return ctrl.Result{}, err
 	}
-	log.Info(strconv.Itoa(len(childJobs.Items)))
-	// log.Info(labels["owner-cronjob"])
 
 	isJobFinished := func(job *kbatch.Job) (bool, kbatch.JobConditionType) {
 		for _, c := range job.Status.Conditions {
@@ -206,30 +372,79 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
+	// containsString checks if a slice contains a specific string.
+
 	return ctrl.Result{}, nil
 }
 
-func (r *WebappCRReconciler) reconcileJobs(ctx context.Context, webappCR *crwebappv1.WebappCR) error {
-	// Your logic to reconcile jobs based on the WebappCR
-	// ...
-	// webappCR := &crwebappv1.WebappCR{}
+// deleteCronJob deletes the CronJob associated with the given WebappCR.
+func (r *WebappCRReconciler) deleteCronJob(ctx context.Context, cronJob *batchv1.CronJob) error {
 	log := log.FromContext(ctx)
-	log.Info("here")
 
+	// Create an instance of CronJob corresponding to the WebappCR
+	// cronJob := &batchv1.CronJob{
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:      webappCR.Name,
+	// 		Namespace: webappCR.Namespace,
+	// 	},
+	// }
+
+	// Attempt to delete the CronJob
+	if err := r.Client.Delete(ctx, cronJob); err != nil {
+		log.Error(err, "Failed to delete CronJob", "Name", cronJob.Name, "Namespace", cronJob.Namespace)
+		return err
+	}
+
+	log.Info("Deleted CronJob", "Name", cronJob.Name, "Namespace", cronJob.Namespace)
 	return nil
+}
+
+func (r *WebappCRReconciler) deleteConfigMap(ctx context.Context, configMap *corev1.ConfigMap) error {
+	log := log.FromContext(ctx)
+
+	// Create an instance of CronJob corresponding to the WebappCR
+	// cronJob := &batchv1.CronJob{
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:      webappCR.Name,
+	// 		Namespace: webappCR.Namespace,
+	// 	},
+	// }
+
+	// Attempt to delete the CronJob
+	if err := r.Client.Delete(ctx, configMap); err != nil {
+		log.Error(err, "Failed to delete CronJob", "Name", configMap.Name, "Namespace", configMap.Namespace)
+		return err
+	}
+
+	log.Info("Deleted ConfigMap", "Name", configMap.Name, "Namespace", configMap.Namespace)
+	return nil
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+// removeString removes a specific string from a slice.
+func removeString(slice []string, s string) []string {
+	var result []string
+	for _, item := range slice {
+		if item != s {
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *WebappCRReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&crwebappv1.WebappCR{}).
-		Owns(&batchv1.CronJob{}).
-		// Watches(
-		// 	&source.Kind{Type: &batchv1.CronJob{}},
-		// 	&handler.EnqueueRequestForOwner{
-		// 		IsController: true,
-		// 		OwnerType:    &crwebappv1.WebappCR{},
-		// 	},
-		// ).
+		Owns(&batchv1.CronJob{}).  // Watch CronJob
+		Owns(&corev1.ConfigMap{}). // Watch ConfigMap
 		Complete(r)
 }

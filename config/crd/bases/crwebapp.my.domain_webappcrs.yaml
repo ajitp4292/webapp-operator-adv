@@ -34,7 +34,7 @@ spec:
           spec:
             description: WebappCRSpec defines the desired state of WebappCR
             properties:
-              backoffLimit:
+              numRetries:
                 format: int32
                 type: integer
               uri:
@@ -42,7 +42,7 @@ spec:
                   to remove/update Foo string `json:"foo,omitempty"`
                 type: string
             required:
-            - backoffLimit
+            - numRetries
             - uri
             type: object
           status:

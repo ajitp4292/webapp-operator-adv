@@ -7,9 +7,39 @@ rules:
 - apiGroups:
   - crwebapp.my.domain
   resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - crwebapp.my.domain
+  resources:
   - cronjobs
   verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
   - update
+  - watch
+- apiGroups:
+  - crwebapp.my.domain
+  resources:
+  - cronjobs/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - crwebapp.my.domain
   resources:
@@ -27,12 +57,22 @@ rules:
   resources:
   - webappcrs/finalizers
   verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
   - update
+  - watch
 - apiGroups:
   - crwebapp.my.domain
   resources:
   - webappcrs/status
   verbs:
+  - create
+  - delete
   - get
+  - list
   - patch
   - update
+  - watch

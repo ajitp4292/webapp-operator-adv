@@ -30,8 +30,8 @@ type WebappCRSpec struct {
 
 	// Foo is an example field of WebappCR. Edit webappcr_types.go to remove/update
 	// Foo string `json:"foo,omitempty"`
-	URI          string `json:"uri"`
-	BackoffLimit int32  `json:"backoffLimit"`
+	URI        string `json:"uri"`
+	NumRetries int32  `json:"numRetries"`
 }
 
 // WebappCRStatus defines the observed state of WebappCR

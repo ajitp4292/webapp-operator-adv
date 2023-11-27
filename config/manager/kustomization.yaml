@@ -1,2 +1,8 @@
 resources:
 - manager.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: controller
+  newName: gcr.io/csye7125-cloud-001/webappcr-operator-1
+  newTag: latest

@@ -38,6 +38,8 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
+// gcloud compute instances describe gke-csye7125-cloud-0-csye7125-cloud-0-a5741ab5-pl6x/10.0.0.8  --zone=COMPUTE_ZONE --format="flattened(serviceAccounts[].scopes)"
+
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")

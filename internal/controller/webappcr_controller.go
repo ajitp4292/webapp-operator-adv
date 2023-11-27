@@ -112,7 +112,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 							Containers: []corev1.Container{
 								{
 									Name:  "kafka-producer",
-									Image: "sumanthksai/kafka-producer:1.1.0", 
+									Image: "sumanthksai/kafka-producer:1.1.0",
 									Env: []corev1.EnvVar{
 										{
 											Name:  "URI",
@@ -123,11 +123,10 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 											Value: configMap.Data["NumRetries"],
 										},
 									},
-
 								},
 							},
 							RestartPolicy: corev1.RestartPolicyOnFailure,
-							imagePullPolicy: []corev1.LocalObjectReference{
+							ImagePullSecrets: []corev1.LocalObjectReference{
 								{Name: "webappcr-docker-regcred"},
 							},
 						},

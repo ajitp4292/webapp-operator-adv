@@ -5,7 +5,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - crwebapp.my.domain
+  - ""
   resources:
   - configmaps
   verbs:
@@ -17,21 +17,25 @@ rules:
   - update
   - watch
 - apiGroups:
-  - crwebapp.my.domain
+  - ""
   resources:
-  - cronjobs
+  - pods
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
-  - crwebapp.my.domain
+  - ""
   resources:
-  - cronjobs/status
+  - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
   verbs:
   - create
   - delete

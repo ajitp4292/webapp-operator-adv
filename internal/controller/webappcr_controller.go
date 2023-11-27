@@ -111,16 +111,25 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
 								{
-									Name:  "ubuntu",
-									Image: "ubuntu", // Replace with your container image
-									Command: []string{
-										"/bin/bash",
-										"-c",
-										"sleep 500000 && " + "echo " + configMap.Data["URI"], // Sleep for 60 seconds before running the main command
+									Name:  "kafka-producer",
+									Image: "sumanthksai/kafka-producer:1.1.0", 
+									Env: []corev1.EnvVar{
+										{
+											Name:  "URI",
+											Value: configMap.Data["URI"],
+										},
+										{
+											Name:  "Retries",
+											Value: configMap.Data["NumRetries"],
+										},
 									},
+
 								},
 							},
 							RestartPolicy: corev1.RestartPolicyOnFailure,
+							imagePullPolicy: []corev1.LocalObjectReference{
+								{Name: "webappcr-docker-regcred"},
+							},
 						},
 					},
 				},

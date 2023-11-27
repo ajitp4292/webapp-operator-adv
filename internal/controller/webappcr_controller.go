@@ -48,9 +48,10 @@ type WebappCRReconciler struct {
 //+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs,verbs=get;list;watch;create;update;patch;delete;
 //+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs/status,verbs=get;list;watch;create;update;patch;delete;
 //+kubebuilder:rbac:groups=crwebapp.my.domain,resources=webappcrs/finalizers,verbs=get;list;watch;create;update;patch;delete;
-//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete;
-//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=cronjobs/status,verbs=get;list;watch;create;update;patch;delete;
-//+kubebuilder:rbac:groups=crwebapp.my.domain,resources=configmaps,verbs=get;list;watch;create;update;patch;delete;
+//+kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=pods/log,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

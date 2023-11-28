@@ -43,7 +43,7 @@ pipeline {
                     gcloud config set project ${PROJECT_ID}
                     gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${REGION} --project ${PROJECT_ID}
                     make deploy IMG=sumanthksai/webapp-operator:latest
-                     """
+                    """
                 }
 
             }

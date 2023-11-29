@@ -1,13 +1,13 @@
 pipeline {
     agent any
-    environment {
-        GH_TOKEN  = credentials('GITHUB_CREDENTIALS_ID')
-        GOOGLE_APPLICATION_CREDENTIALS = credentials('webapp-operator')
-        PROJECT_ID = 'csye7125-cloud-002'
-        CLUSTER_NAME = 'csye7125-cloud-002-gke'
-        REGION = 'us-east1'
+    // environment {
+    //     GH_TOKEN  = credentials('GITHUB_CREDENTIALS_ID')
+    //     GOOGLE_APPLICATION_CREDENTIALS = credentials('webapp-operator')
+    //     PROJECT_ID = 'csye7125-cloud-002'
+    //     CLUSTER_NAME = 'csye7125-cloud-002-gke'
+    //     REGION = 'us-east1'
 
-    }
+    // }
     stages {
         stage('Fetch GitHub Credentials') {
             steps {

@@ -22,7 +22,7 @@ pipeline {
             script{
                 withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_ID', usernameVariable: 'dockerHubUsername', passwordVariable: 'dockerHubPassword')]) {
                   sh """
-                    docker login -u dockerHubUsername -p dockerHubPassword
+                    docker login -u ${dockerHubUsername} -p ${dockerHubPassword}
                     make docker-build docker-push IMG=sumanthksai/webapp-operator:latest
                      """
                 }

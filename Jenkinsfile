@@ -4,6 +4,7 @@ pipeline {
         GH_TOKEN  = credentials('GITHUB_CREDENTIALS_ID')
         GOOGLE_APPLICATION_CREDENTIALS = credentials('webapp-operator')
     }
+    
     stages {
         stage('Fetch GitHub Credentials') {
             steps {
@@ -21,6 +22,7 @@ pipeline {
             script{
                 withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_ID', usernameVariable: 'dockerHubUsername', passwordVariable: 'dockerHubPassword')]) {
                   sh """
+                    docker login -u dockerHubUsername -p dockerHubPassword
                     make docker-build docker-push IMG=sumanthksai/webapp-operator:latest
                      """
                 }
@@ -37,7 +39,7 @@ pipeline {
                   sh """
                     gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                     gcloud config set project ${PROJECT_ID}
-                    gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${REGION} --project ${PROJECT_ID}
+                    gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${ZONE} --project ${PROJECT_ID}
                     make deploy IMG=sumanthksai/webapp-operator:latest
                     """
                 }

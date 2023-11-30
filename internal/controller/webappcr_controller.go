@@ -112,7 +112,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 							Containers: []corev1.Container{
 								{
 									Name:  "kafka-producer",
-									Image: "sumanthksai/kafka-producer:1.2.0",
+									Image: "sumanthksai/kafka-producer:1.3.0",
 									Env: []corev1.EnvVar{
 										{
 											Name:  "URI",

@@ -69,7 +69,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	var namespaces [1]string = [1]string{"webappcr-system"} // List of Namespaces
+	var namespaces [2]string = [2]string{"webappcr-system", "webapp"} // List of Namespaces
 	// var namespaces []string // List of Namespaces, or you can set it to an empty array for watching all namespaces
 	defaultNamespaces := make(map[string]cache.Config)
 

@@ -3,6 +3,9 @@ pipeline {
     environment {
         GH_TOKEN  = credentials('GITHUB_CREDENTIALS_ID')
         GOOGLE_APPLICATION_CREDENTIALS = credentials('webapp-operator')
+        PROJECT_ID = 'csye7125-cloud-79'
+        CLUSTER_NAME = 'csye7125-cloud-79-gke'
+        REGION = 'us-east1'
     }
     
     stages {
@@ -39,7 +42,7 @@ pipeline {
                   sh """
                     gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                     gcloud config set project ${PROJECT_ID}
-                    gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${ZONE} --project ${PROJECT_ID}
+                    gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${REGION} --project ${PROJECT_ID}
                     make deploy IMG=sumanthksai/webapp-operator:latest
                     """
                 }

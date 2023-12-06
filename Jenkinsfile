@@ -2,9 +2,9 @@ pipeline {
     agent any
     environment {
         GH_TOKEN  = credentials('GITHUB_CREDENTIALS_ID')
-        GOOGLE_APPLICATION_CREDENTIALS = credentials('webapp-operator')
-        PROJECT_ID = 'csye7125-cloud-79'
-        CLUSTER_NAME = 'csye7125-cloud-79-gke'
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('webapp-operator-gcp')
+        PROJECT_ID = 'csye7125-cloud-003'
+        CLUSTER_NAME = 'csye7125-cloud-003-gke'
         REGION = 'us-east1'
     }
     
@@ -37,7 +37,7 @@ pipeline {
     stage('make deploy'){
         steps{
             script{
-                    withCredentials([file(credentialsId: 'webapp-operator', variable: 'SA_KEY')]) {
+                    withCredentials([file(credentialsId: 'webapp-operator-gcp', variable: 'SA_KEY')]) {
 
                   sh """
                     gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}

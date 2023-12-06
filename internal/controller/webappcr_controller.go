@@ -124,7 +124,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 										},
 										{
 											Name:  "BROKER_ENDPOINT",
-											Value: "dev-kafka-controller-0.dev-kafka-controller-headless.default.svc.cluster.local:9092",
+											Value: "dev-kafka-controller-0.dev-kafka-controller-headless.cosuumer.svc.cluster.local:9092",
 										},
 										{
 											Name:  "SASL_USERNAME",

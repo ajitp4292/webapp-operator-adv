@@ -49,7 +49,7 @@ rules:
   resources:
   - webappcrs
   verbs:
-  # - create
+  - create
   - delete
   - get
   - list

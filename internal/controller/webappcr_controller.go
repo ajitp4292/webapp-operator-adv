@@ -106,7 +106,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
 								"owner-cronjob": webappCR.Name,
-								"app": "kafka-producer"
+								"app": "kafka-producer",
 							},
 						},
 						Spec: corev1.PodSpec{

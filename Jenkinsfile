@@ -7,7 +7,7 @@ pipeline {
         CLUSTER_NAME = 'csye7125-cloud-79-gke'
         REGION = 'us-east1'
         KUBE_DEPLOYMENT_NAME = 'webappcr-controller-manager'
-        KUBE_NAMESPACE = 'wenappcr-system'
+        KUBE_NAMESPACE = 'webappcr-system'
     }
     
     stages {

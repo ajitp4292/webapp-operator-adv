@@ -6,6 +6,8 @@ pipeline {
         PROJECT_ID = 'csye7125-cloud-79'
         CLUSTER_NAME = 'csye7125-cloud-79-gke'
         REGION = 'us-east1'
+        KUBE_DEPLOYMENT_NAME = 'webappcr-controller-manager'
+        KUBE_NAMESPACE = 'wenappcr-system'
     }
     
     stages {
@@ -42,9 +44,18 @@ pipeline {
                   sh """
                     gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                     gcloud config set project ${PROJECT_ID}
-                    gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${REGION} --project ${PROJECT_ID}
-                    make deploy IMG=sumanthksai/webapp-operator:latest
+                    gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${REGION} --project ${PROJECT_ID}                    
                     """
+
+                                                                // Check if the deployment exists
+                    def deploymentExists = sh(script: "kubectl get deployment ${KUBE_DEPLOYMENT_NAME} --namespace=${KUBE_NAMESPACE}", returnStatus: true)
+
+                    // If the deployment exists, delete it
+                    if (deploymentExists == 0) {
+                        sh "kubectl delete deployment ${KUBE_DEPLOYMENT_NAME} --namespace=${KUBE_NAMESPACE}"
+                    }
+
+                    sh "make deploy IMG=sumanthksai/webapp-operator:latest"
                 }
 
             }

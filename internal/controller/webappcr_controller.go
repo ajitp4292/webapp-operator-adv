@@ -132,11 +132,11 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 										},
 									},
 								},
-								{
-									Name:    "istio-proxy-killer",
-									Image:   "curlimages/curl:latest",
-									Command: []string{"sh", "-c", "sleep 30 && curl -sf -XPOST http://127.0.0.1:15020/quitquitquit"},
-								},
+								// {
+								// 	Name:    "istio-proxy-killer",
+								// 	Image:   "curlimages/curl:latest",
+								// 	Command: []string{"sh", "-c", "sleep 30 && curl -sf -XPOST http://127.0.0.1:15020/quitquitquit"},
+								// },
 							},
 							RestartPolicy: corev1.RestartPolicyOnFailure,
 							ImagePullSecrets: []corev1.LocalObjectReference{

@@ -96,7 +96,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			Namespace: webappCR.Namespace,
 		},
 		Spec: batchv1.CronJobSpec{
-			Schedule: "*/1 * * * *", // Example: every 5 minutes
+			Schedule: "*/3 * * * *", // Example: every 5 minutes
 			// we need it from specs of cr
 
 			JobTemplate: batchv1.JobTemplateSpec{
@@ -106,6 +106,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
 								"owner-cronjob": webappCR.Name,
+								"app": "kafka-producer",
 							},
 						},
 						Spec: corev1.PodSpec{
@@ -142,7 +143,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 										},
 										{
 											Name:  "BROKER_ENDPOINT",
-											Value: "dev-kafka-controller-0.consumer.svc.cluster.local:9092",
+											Value: "dev-kafka.consumer.svc.cluster.local:9092",
 										},
 										{
 											Name:  "SASL_USERNAME",

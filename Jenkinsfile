@@ -7,7 +7,8 @@ pipeline {
         CLUSTER_NAME = 'csye7125-cloud-003-gke'
         REGION = 'us-east1'
         KUBE_DEPLOYMENT_NAME = 'webappcr-controller-manager'
-        KUBE_NAMESPACE = 'webappcr-system'
+        OP_NAMESPACE = 'webappcr-system'
+        WEBAPP_NAMESPACE = 'webapp'
     }
     
     stages {
@@ -48,12 +49,14 @@ pipeline {
                     """
 
                                                                 // Check if the deployment exists
-                    def deploymentExists = sh(script: "kubectl get deployment ${KUBE_DEPLOYMENT_NAME} --namespace=${KUBE_NAMESPACE}", returnStatus: true)
+                    def deploymentExists = sh(script: "kubectl get deployment ${KUBE_DEPLOYMENT_NAME} --namespace=${OP_NAMESPACE}", returnStatus: true)
 
                     // If the deployment exists, delete it
                     if (deploymentExists == 0) {
-                        sh "kubectl delete deployment ${KUBE_DEPLOYMENT_NAME} --namespace=${KUBE_NAMESPACE}"
+                        sh "kubectl delete deployment ${KUBE_DEPLOYMENT_NAME} --namespace=${OP_NAMESPACE}"
                     }
+
+                    sh "kubectl delete all --selector app=kafka-producer -n ${WEBAPP_NAMESPACE} -o name"
 
                     sh "make deploy IMG=sumanthksai/webapp-operator:latest"
                 }

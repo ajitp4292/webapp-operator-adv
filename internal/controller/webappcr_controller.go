@@ -96,7 +96,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			Namespace: webappCR.Namespace,
 		},
 		Spec: batchv1.CronJobSpec{
-			Schedule: "*/1 * * * *", // Example: every 5 minutes
+			Schedule: "*/15 * * * *", // Example: every 5 minutes
 			// we need it from specs of cr
 
 			JobTemplate: batchv1.JobTemplateSpec{

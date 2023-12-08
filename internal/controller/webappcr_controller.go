@@ -109,6 +109,24 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 							},
 						},
 						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{
+								PodAntiAffinity: &corev1.PodAntiAffinity{
+									PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+										{
+											LabelSelector: &metav1.LabelSelector{
+												MatchExpressions: []metav1.LabelSelectorRequirement{
+													{
+														Key:      "app",
+														Operator: metav1.LabelSelectorOpIn,
+														Values:   []string{"kafka-producer"},
+													},
+												},
+											},
+											TopologyKey: "kubernetes.io/hostname",
+										},
+									},
+								},
+							},
 							Containers: []corev1.Container{
 								{
 									Name:  "kafka-producer",

@@ -163,7 +163,7 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 							},
 							RestartPolicy: corev1.RestartPolicyOnFailure,
 							ImagePullSecrets: []corev1.LocalObjectReference{
-								{Name: "webapp-docker-regcred"},
+								{Name: "docker-regcred"},
 							},
 						},
 					},

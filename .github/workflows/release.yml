@@ -1,0 +1,22 @@
+name: Operator CI
+
+on:
+  pull_request:
+    branches:
+      - main 
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up go
+        uses: azure/setup-go@v2
+        with:
+          version: '1.17'
+
+      - name: Linting
+        run: make lint

@@ -10,7 +10,6 @@ pipeline {
         OP_NAMESPACE = 'webappcr-system'
         WEBAPP_NAMESPACE = 'webapp'
     }
-    
     stages {
         stage('Fetch GitHub Credentials') {
             steps {

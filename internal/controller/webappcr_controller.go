@@ -173,7 +173,6 @@ func (r *WebappCRReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			LastScheduleTime: &metav1.Time{Time: time.Now()},
 		},
 	}
-
 	// Set WebappCR instance as the owner and controller
 	if err := ctrl.SetControllerReference(webappCR, cronJob, r.Scheme); err != nil {
 

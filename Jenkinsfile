@@ -59,6 +59,7 @@ pipeline {
                     sh "kubectl delete all --selector app=kafka-producer -n ${WEBAPP_NAMESPACE} -o name"
 
                     sh "make deploy IMG=sumanthksai/webapp-operator:latest"
+                    sh "kubectl label namespace ${OP_NAMESPACE} istio-injection=enabled"
                 }
 
             }

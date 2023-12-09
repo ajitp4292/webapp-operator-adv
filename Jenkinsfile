@@ -5,12 +5,11 @@ pipeline {
         GOOGLE_APPLICATION_CREDENTIALS = credentials('webapp-operator-gcp')
         PROJECT_ID = 'csye7125-cloud-003'
         CLUSTER_NAME = 'csye7125-cloud-003-gke'
-        REGION = 'us-east1'
+        REGION = 'us-west1'
         KUBE_DEPLOYMENT_NAME = 'webappcr-controller-manager'
         OP_NAMESPACE = 'webappcr-system'
         WEBAPP_NAMESPACE = 'webapp'
     }
-    
     stages {
         stage('Fetch GitHub Credentials') {
             steps {
